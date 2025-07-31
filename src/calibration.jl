@@ -43,7 +43,8 @@ function calibrate(
     end
 
     @variable(M, 
-        x[1:size(table(data),1)]
+        x[i = 1:size(table(data),1)],
+        start = table(data)[i, :value],
     )
 
 
