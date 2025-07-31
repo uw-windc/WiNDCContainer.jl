@@ -51,12 +51,12 @@ function regularity(X::T) where T <: WiNDCtable
     Symbol.(names(ELEMENTS)) == [:name, :description, :set] || error("Elements DataFrame names do not match expected names: $(Symbol.(names(ELEMENTS))) != [:name, :description, :set]")
     Symbol.(names(PARAMS)) == [:name, :subtable] || error("Parameters DataFrame names do not match expected names: $(Symbol.(names(PARAMS))) != [:name, :subtable]")
 
-    all(x∈domain(X) for x in unique(SETS[!, :domain])) || error("Found domain(s) in sets that is not in the domain: $([x for x in SETS[!, :domain] if !(x in domain(X))])")
+    all(x∈domain(X) for x in unique(SETS[!, :domain])) || error("Found domain(s) in sets that is not in the domain: $([x for x in unique(SETS[!, :domain]) if !(x in domain(X))])")
     set_names = SETS[!, :name]
-    all(x∈set_names for x in unique(ELEMENTS[!, :set])) || error("Found set(s) in elements that are not set(s): $([x for x in ELEMENTS[!, :set] if !(x in set_names)])")
+    all(x∈set_names for x in unique(ELEMENTS[!, :set])) || error("Found set(s) in elements that are not set(s): $([x for x in unique(ELEMENTS[!, :set]) if !(x in set_names)])")
 
     param_names = PARAMS[!, :name]
-    all(x∈param_names for x in unique(data[!, :parameter])) || error("Found parameter(s) in data that are not parameters: $([x for x in data[!, :parameter] if !(x in param_names)])")
+    all(x∈param_names for x in unique(data[!, :parameter])) || error("Found parameter(s) in data that are not parameters: $([x for x in unique(data[!, :parameter]) if !(x in param_names)])")
 end
 
 
