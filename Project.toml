@@ -14,8 +14,6 @@ BenchmarkTools = "1.6.0"
 DataFrames = "1.7.0"
 Ipopt = "1.10.6"
 JuMP = "1.27.0"
-Test = "1.11.0"
-TestItemRunner = "1.1.0"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
