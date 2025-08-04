@@ -97,7 +97,7 @@ function calibrate(
     table(data) |>
         x -> select!(x, Not(:variable))
 
-    return (T(df, sets(data), elements(data), parameters(data)), M)
+    return (T(df, sets(data), elements(data)), M)
 end
 
 
