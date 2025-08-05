@@ -16,7 +16,7 @@
 
     param = DataFrame(row = [], col = [], year = [], parameter = [], value = [])
     S = DataFrame(name = [], description = [], domain = [])
-    E = DataFrame(name = [], description = [], set = [], parameter=Bool[])
+    E = DataFrame(name = [], description = [], set = [])
 
     @test_throws(
         "Data names do not match expected names: Symbol[] != [:row, :col, :year, :parameter, :value]",
@@ -39,7 +39,7 @@
     )
 
     S = DataFrame(name = [:commodity, :value_added, :sector], description = ["Commodity", "Value Added", "Sector"], domain = [:row, :row, :col])
-    E = DataFrame(name = ["com_1", "va_1", "sec_1"], description = ["", "", ""], set = [:commodity, :value_added, :sectors], parameter=[false, false, false])
+    E = DataFrame(name = ["com_1", "va_1", "sec_1"], description = ["", "", ""], set = [:commodity, :value_added, :sectors])
     @test_throws(
         "Found set(s) in elements that are not set(s): [:sectors]",
         National(param, S, E; regularity_check = true)
@@ -51,8 +51,7 @@
     E = DataFrame(
         name = [:a, :b, :c, :d, :p1, :p2, 2020, 2021], 
         description = ["", "", "", "", "", "", "", ""], 
-        set = [:commodity, :value_added, :sector, :sector, :p1, :p2, :year, :year],
-        parameter = [false, false, false, false, true, true, false, false]
+        set = [:commodity, :value_added, :sector, :sector, :p1, :p2, :year, :year]
         )
     @test_throws(
         "Found entry in column `parameter` that are not elements: [:p3]",
@@ -65,8 +64,7 @@
     E = DataFrame(
         name = [:a, :b, :c, :d, :p1, :p2, 2020, 2021], 
         description = ["", "", "", "", "", "", "", ""], 
-        set = [:commodity, :value_added, :sector, :sector, :p1, :p2, :year, :year],
-        parameter = [false, false, false, false, true, true, false, false]
+        set = [:commodity, :value_added, :sector, :sector, :p1, :p2, :year, :year]
         )
     @test_throws(
         "Found entry in column `col` that are not elements: [:e]",

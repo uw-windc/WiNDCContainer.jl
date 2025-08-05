@@ -15,7 +15,7 @@
 
     param = DataFrame(row = [:a, :b, :va], col = [:s1, :s2, :s1], parameter = [:p1, :p2, :p1], value = [1.0, 2.0, 3.0])
     S = DataFrame(name = [:commodity, :value_added, :sector, :p1, :p2, :p3], description = ["Commodity", "Value Added", "Sector","","",""], domain = [:row, :row, :col, :parameter, :parameter, :parameter])
-    E = DataFrame(name = [:a, :b, :va, :s1, :s2, :p1, :p2, :p1, :p2], description = ["", "", "", "", "", "", "", "", ""], set = [:commodity, :commodity, :value_added, :sector, :sector, :p1, :p2, :p3, :p3], parameter = [false, false, false, false, false, true, true, true, true])
+    E = DataFrame(name = [:a, :b, :va, :s1, :s2, :p1, :p2, :p1, :p2], description = ["", "", "", "", "", "", "", "", ""], set = [:commodity, :commodity, :value_added, :sector, :sector, :p1, :p2, :p3, :p3])
     
     X = National(param, S, E; regularity_check = true)
 
@@ -33,5 +33,5 @@
 
 
     @test elements(X) == E
-    @test elements(X, :commodity) == E[E.set .== :commodity, [:name, :description, :set]]
+    @test elements(X, :commodity) == E[E.set .== :commodity, :]
 end
