@@ -49,7 +49,7 @@ function regularity(X::T) where T <: WiNDCtable
     # Ensure all dataframes have the correct columns
     Symbol.(names(data)) == [domain(X); [:parameter, :value]] || error("Data names do not match expected names: $(Symbol.(names(data))) != $([domain(X); [:parameter, :value]])")
     Symbol.(names(SETS)) == [:name, :description, :domain] || error("Sets DataFrame names do not match expected names: $(Symbol.(names(SETS))) != [:name, :description, :domain]")
-    Symbol.(names(ELEMENTS)) == [:name, :description, :set] || error("Elements DataFrame names do not match expected names: $(Symbol.(names(ELEMENTS))) != [:name, :description, :set]")
+    Symbol.(names(ELEMENTS)) == [:name, :description, :set, :parameter] || error("Elements DataFrame names do not match expected names: $(Symbol.(names(ELEMENTS))) != [:name, :description, :set]")
 
     all(x∈[domain(X);[:parameter]] for x in unique(SETS[!, :domain])) || error("Found domain(s) in sets that is not in the domain: $([x for x in unique(SETS[!, :domain]) if !(x in domain(X))])")
     set_names = SETS[!, :name]
@@ -66,6 +66,7 @@ end
 
 """
     domain(data::T) where T<:WiNDCtable
+    domain(data::WiNDCtable, set_name::Symbol) 
 
 Return the domain of the WiNDCtable object. Must be implemented for any subtype 
 of WiNDCtable. Will throw an error if not implemented.
@@ -84,7 +85,14 @@ Returns a vector of symbols representing the domain of the WiNDCtable object.
 """
 domain(data::WiNDCtable) = throw(ArgumentError("domain not implemented for WiNDCtable"))
 function domain(data::WiNDCtable, set_name::Symbol) 
-    return subset(sets(data), :name => ByRow(==(set_name))) |> x -> x[1, :domain]
+     
+    set_names = subset(sets(data), :name => ByRow(==(set_name)))
+
+    if :parameter in set_names[!,:domain]
+        return :parameter
+    else
+        return set_names[1,:domain]
+    end
 end
 domain(data::WiNDCtable, set_element::Pair{Symbol, T}) where T <: Any = domain(data, set_element[1]) 
 
@@ -115,48 +123,48 @@ julia> table(data, :commodity => Symbol("111CA"), :sector) # Returns the table f
     The expected output is the entire `data` DataFrame.
 """
 table(data::WiNDCtable) = throw(ArgumentError("table not implemented for WiNDCtable"))
-function table(data::WiNDCtable, domain::Symbol, elements::Vector{T}) where T <: Any
-    return subset(table(data), domain => ByRow(∈(elements)))
+function table(data::WiNDCtable, Domain::Symbol, elements::Vector{T}; column = :value, output=:value) where T <: Any
+    return subset(table(data), Domain => ByRow(∈(elements))) |> x -> select(x, domain(data)..., :parameter, column => output)
 end
 
 
-function table(data::WiNDCtable, set_name::Symbol)
+function table(data::WiNDCtable, set_name::Symbol; column = :value, output=:value)
     E = elements(data, set_name)[!, :name]
     d = domain(data, set_name)
-    return table(data, d, E)
+    return table(data, d, E; column = column, output = output)
 end
 
 
-function table(data::WiNDCtable, set_element::Pair{Symbol, T}) where T <: Any
-    table(data, set_element[1] => [set_element[2]])
+function table(data::WiNDCtable, set_element::Pair{Symbol, T}; column = :value, output=:value) where T <: Any
+    table(data, set_element[1] => [set_element[2]], column = column, output = output)
 end
 
-function table(data::WiNDCtable, set_element::Pair{Symbol, Vector{T}}) where T <: Any
+function table(data::WiNDCtable, set_element::Pair{Symbol, Vector{T}}; column = :value, output=:value) where T <: Any
     d = domain(data, set_element[1])
     e = set_element[2]
 
     E = elements(data, set_element[1])[!, :name]
     all(x -> x in E, e) || error("Elements $e not found in set $(set_element[1])")
 
-    table(data, d, e)
+    table(data, d, e; column = column, output = output)
 end
 
-function table(data, set_names...)
+function table(data, set_names...; column = :value, output = :value)
     out = Dict()
     for set_name in set_names
         d = domain(data, set_name)
         if !haskey(out, d)
             out[d] = DataFrame()
         end
-        X = table(data, set_name)
+        X = table(data, set_name; column = column, output = output)
         out[d] = vcat(out[d], X)
     end
     if length(out) == 1
         X = first(values(out))
     else
         X = innerjoin(
-                values(out)...;
-                on = [domain(data); [:parameter, :value]]
+                values(out)...,
+                on = [domain(data); [:parameter, output]]
             )
     end
     return X
@@ -197,6 +205,13 @@ belonging to that set.
     `elements(data::WiNDCtable)` must be implemented for any subtype of WiNDCtable.
 """
 elements(data::WiNDCtable) = data.elements
-function elements(data::WiNDCtable, set_name::Symbol...; columns = [:name, :description, :set]) 
-    subset(elements(data), :set => ByRow(∈(set_name))) |> x -> select(x, columns)
+function elements(data::WiNDCtable, set_name::Symbol...; columns = [:name, :description, :set], parameter::Bool=true) 
+    X = subset(elements(data), :set => ByRow(∈(set_name))) #|> x -> select(x, columns)
+    if parameter
+        Y = subset(X, :parameter => ByRow(y->y))
+    else
+        Y = subset(X, :parameter => ByRow(y->!y))
+    end
+    X = !isempty(Y) ? Y : X
+    return select(X, columns)
 end
