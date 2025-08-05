@@ -51,6 +51,10 @@ function regularity(X::T) where T <: WiNDCtable
     Symbol.(names(SETS)) == [:name, :description, :domain] || error("Sets DataFrame names do not match expected names: $(Symbol.(names(SETS))) != [:name, :description, :domain]")
     Symbol.(names(ELEMENTS)) == [:name, :description, :set] || error("Elements DataFrame names do not match expected names: $(Symbol.(names(ELEMENTS))) != [:name, :description, :set]")
 
+    # Uniqueness of set name
+    length(SETS[!, :name]) == length(unique(SETS[!, :name])) || error("Set names are not unique")
+
+
     all(x∈[domain(X);[:parameter]] for x in unique(SETS[!, :domain])) || error("Found domain(s) in sets that is not in the domain: $([x for x in unique(SETS[!, :domain]) if !(x in domain(X))])")
     set_names = SETS[!, :name]
     all(x∈set_names for x in unique(ELEMENTS[!, :set])) || error("Found set(s) in elements that are not set(s): $([x for x in unique(ELEMENTS[!, :set]) if !(x in set_names)])")
@@ -197,6 +201,14 @@ belonging to that set.
     `elements(data::WiNDCtable)` must be implemented for any subtype of WiNDCtable.
 """
 elements(data::WiNDCtable) = data.elements
-function elements(data::WiNDCtable, set_name::Symbol...; columns = [:name, :description, :set]) 
-    subset(elements(data), :set => ByRow(∈(set_name))) |> x -> select(x, columns)
+function elements(data::WiNDCtable, set_name::Symbol...; columns = [:name, :description, :set], base=false) 
+    X = subset(elements(data), :set => ByRow(∈(set_name))) #|> x -> select(x, columns)
+    if base
+        X = innerjoin(
+            elements(data),
+            select(X, :name),
+            on = :set => :name
+        )
+    end
+    return select(X, columns)
 end

@@ -38,6 +38,16 @@
         National(param, S, E; regularity_check = true)
     )
 
+
+    S = DataFrame(
+        name =        [:commodity,  :value_added,  :sector,  :value_added], 
+        description = ["Commodity", "Value Added", "Sector", "duplicate"], 
+        domain =      [:row,        :row,          :col,     :row])
+    @test_throws(
+        "Set names are not unique",
+        National(param, S, E; regularity_check = true)
+    )
+
     S = DataFrame(name = [:commodity, :value_added, :sector], description = ["Commodity", "Value Added", "Sector"], domain = [:row, :row, :col])
     E = DataFrame(name = ["com_1", "va_1", "sec_1"], description = ["", "", ""], set = [:commodity, :value_added, :sectors])
     @test_throws(
