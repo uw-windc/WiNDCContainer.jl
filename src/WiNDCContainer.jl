@@ -4,7 +4,7 @@ module WiNDCContainer
 
     include("structs.jl")
 
-    export WiNDCtable, table, sets, parameters, domain, elements
+    export WiNDCtable, table, sets, domain, elements
 
     include("calibration.jl")
 

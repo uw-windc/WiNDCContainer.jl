@@ -24,12 +24,11 @@ abstract type WiNDCtable end;
 function (::Type{T})(
         data::DataFrame, 
         sets::DataFrame, 
-        elements::DataFrame, 
-        parameters::DataFrame;
+        elements::DataFrame;
         regularity_check::Bool = true
     ) where T <: WiNDCtable
     
-    X = T(data, sets, elements, parameters)
+    X = T(data, sets, elements)
 
     if regularity_check
         regularity(X)
@@ -37,26 +36,35 @@ function (::Type{T})(
     return X
 end
 
+"""
 
+Add type checking on columns
+"""
 function regularity(X::T) where T <: WiNDCtable
     # Extract fields and ensure function implemented
     data = table(X)
     SETS = sets(X)
     ELEMENTS = elements(X)
-    PARAMS = parameters(X)
 
     # Ensure all dataframes have the correct columns
     Symbol.(names(data)) == [domain(X); [:parameter, :value]] || error("Data names do not match expected names: $(Symbol.(names(data))) != $([domain(X); [:parameter, :value]])")
     Symbol.(names(SETS)) == [:name, :description, :domain] || error("Sets DataFrame names do not match expected names: $(Symbol.(names(SETS))) != [:name, :description, :domain]")
     Symbol.(names(ELEMENTS)) == [:name, :description, :set] || error("Elements DataFrame names do not match expected names: $(Symbol.(names(ELEMENTS))) != [:name, :description, :set]")
-    Symbol.(names(PARAMS)) == [:name, :subtable] || error("Parameters DataFrame names do not match expected names: $(Symbol.(names(PARAMS))) != [:name, :subtable]")
 
-    all(x∈domain(X) for x in unique(SETS[!, :domain])) || error("Found domain(s) in sets that is not in the domain: $([x for x in unique(SETS[!, :domain]) if !(x in domain(X))])")
+    # Uniqueness of set name
+    length(SETS[!, :name]) == length(unique(SETS[!, :name])) || error("Set names are not unique")
+
+
+    all(x∈[domain(X);[:parameter]] for x in unique(SETS[!, :domain])) || error("Found domain(s) in sets that is not in the domain: $([x for x in unique(SETS[!, :domain]) if !(x in domain(X))])")
     set_names = SETS[!, :name]
     all(x∈set_names for x in unique(ELEMENTS[!, :set])) || error("Found set(s) in elements that are not set(s): $([x for x in unique(ELEMENTS[!, :set]) if !(x in set_names)])")
 
-    param_names = PARAMS[!, :name]
-    all(x∈param_names for x in unique(data[!, :parameter])) || error("Found parameter(s) in data that are not parameters: $([x for x in unique(data[!, :parameter]) if !(x in param_names)])")
+    for d in [domain(X)..., :parameter]
+        elms = unique(data[!,d])
+        sets_in_domain = SETS[SETS.domain .== d, :name]
+        all_elements = elements(X, sets_in_domain...)[!, :name]
+        all(x -> x in all_elements, elms) || error("Found entry in column `$d` that are not elements: $([x for x in elms if !(x in all_elements)])")
+    end
 end
 
 
@@ -79,48 +87,89 @@ Returns a vector of symbols representing the domain of the WiNDCtable object.
     This function must be implemented for any subtype of WiNDCtable.
 """
 domain(data::WiNDCtable) = throw(ArgumentError("domain not implemented for WiNDCtable"))
-
-
-"""
-    parameters(data::WiNDCtable)
-    parameters(data::WiNDCtable, params::Vector{Symbol}; columns = [:name, :subtable])
-    parameters(data::WiNDCtable, param::Symbol; columns = [:name, :subtable])
-
-Return the parameters of a WiNDCtable object. If `param` or `params` is specified
-return only the parameters matching those values.
-
-!!! note
-    `parameters(data::WiNDCtable)` must be implemented for any subtype of WiNDCtable.
-"""
-parameters(data::WiNDCtable) = throw(ArgumentError("parameters not implemented for WiNDCtable"))
-function parameters(data::WiNDCtable, params::Vector{Symbol}; columns = [:name, :subtable])
-    return subset(parameters(data), :name => ByRow(in(params))) |> x -> select(x, columns)
+function domain(data::WiNDCtable, set_name::Symbol) 
+    return subset(sets(data), :name => ByRow(==(set_name))) |> x -> x[1, :domain]
 end
-parameters(data::WiNDCtable, param::Symbol; columns = [:name, :subtable]) = parameters(data, [param]; columns = columns)
+domain(data::WiNDCtable, set_element::Pair{Symbol, T}) where T <: Any = domain(data, set_element[1]) 
+
+
 
 
 """
     table(data::WiNDCtable)
-    table(data::WiNDCtable, params::Vector{Symbol})
-    table(data::WiNDCtable, parameter::Symbol)
+    table(data::WiNDCtable, set_name::Symbol)
+    table(data::WiNDCtable, set_element::Pair{Symbol, T}) where T <: Any
+    table(data::WiNDCtable, set_element::Pair{Symbol, Vector{T}}) where T <: Any
+    table(data, set_names...)
 
-Return the main table of a WiNDCtable object. If `params` or `parameter` is specified,
-return only the rows of the table that match the specified parameters.
+Return the main table of a WiNDCtable object. Optionally filter by set name or set
+element pair.
+
+## Examples
+
+```julia
+julia> table(data) # Returns the entire table of the WiNDCtable object
+julia> table(data, :commodity) # Returns the table filtered by the 'commodity' set
+julia> table(data, :commodity => ["111CA", "222CA"]) # Returns the table filtered by the 'commodity' set with elements "111CA" and "222CA"
+julia> table(data, :commodity => Symbol("111CA"), :sector) # Returns the table filtered by the 'commodity' set with element "111CA" and the 'sector' set
+```
 
 !!! note
     `table(data::WiNDCtable)` must be implemented for any subtype of WiNDCtable.
+    The expected output is the entire `data` DataFrame.
 """
-table(data::WiNDCtable) = data.data
-function table(data::WiNDCtable, params::Vector{Symbol})
-    innerjoin(
-        table(data),
-        parameters(data, params; columns = [:subtable]),
-        on = :parameter => :subtable
-    )
+table(data::WiNDCtable) = throw(ArgumentError("table not implemented for WiNDCtable"))
+function table(data::WiNDCtable, domain::Symbol, elements::Vector{T}) where T <: Any
+    return subset(table(data), domain => ByRow(∈(elements)))
 end
-function table(data::WiNDCtable, parameter::Symbol) 
-    return table(data, [parameter])
+
+
+function table(data::WiNDCtable, set_name::Symbol)
+    E = elements(data, set_name)[!, :name]
+    d = domain(data, set_name)
+    return table(data, d, E)
 end
+
+
+function table(data::WiNDCtable, set_element::Pair{Symbol, T}) where T <: Any
+    table(data, set_element[1] => [set_element[2]])
+end
+
+function table(data::WiNDCtable, set_element::Pair{Symbol, Vector{T}}) where T <: Any
+    d = domain(data, set_element[1])
+    e = set_element[2]
+
+    E = elements(data, set_element[1])[!, :name]
+    all(x -> x in E, e) || error("Elements $e not found in set $(set_element[1])")
+
+    table(data, d, e)
+end
+
+function table(data, set_names...)
+    out = Dict()
+    for set_name in set_names
+        d = domain(data, set_name)
+        if !haskey(out, d)
+            out[d] = DataFrame()
+        end
+        X = table(data, set_name)
+        out[d] = vcat(out[d], X)
+    end
+    if length(out) == 1
+        X = first(values(out))
+    else
+        X = innerjoin(
+                values(out)...;
+                on = [domain(data); [:parameter, :value]]
+            )
+    end
+    return X
+end
+
+
+
+
+
 
 """
     sets(data::WiNDCtable)
@@ -133,8 +182,8 @@ with that name.
     `sets(data::WiNDCtable)` must be implemented for any subtype of WiNDCtable.
 """
 sets(data::WiNDCtable) = data.sets
-function sets(data::WiNDCtable, set_name::Symbol) 
-    out = subset(sets(data), :name => ByRow(==(set_name)))
+function sets(data::WiNDCtable, set_name::Symbol...) 
+    out = subset(sets(data), :name => ByRow(∈(set_name)))
     if isempty(out)
         error("Set `$set_name` not found in sets.")
     end
@@ -152,6 +201,14 @@ belonging to that set.
     `elements(data::WiNDCtable)` must be implemented for any subtype of WiNDCtable.
 """
 elements(data::WiNDCtable) = data.elements
-function elements(data::WiNDCtable, set_name::Symbol; columns = [:name, :description, :set]) 
-    subset(elements(data), :set => ByRow(==(set_name))) |> x -> select(x, columns)
+function elements(data::WiNDCtable, set_name::Symbol...; columns = [:name, :description, :set], base=false) 
+    X = subset(elements(data), :set => ByRow(∈(set_name))) #|> x -> select(x, columns)
+    if base
+        X = innerjoin(
+            elements(data),
+            select(X, :name),
+            on = :set => :name
+        )
+    end
+    return select(X, columns)
 end
