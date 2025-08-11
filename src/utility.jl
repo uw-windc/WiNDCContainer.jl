@@ -49,12 +49,6 @@ function save_table(
         file = jldopen(output_path, "a") # what if file doesn't exist?
     end
 
-    #all_years = get_table(MU) |>
-    #    x -> x[!,:year] |>
-    #    unique
-
-    #column_names = table(MU) |> names
-
     if haskey(file, "type")
         file["type"] == T || error("The type of the table does not match the type of the file.")
     else
@@ -72,17 +66,6 @@ function save_table(
     if !haskey(file, "data")
         file["data"] = table(MU)
     end
-
-    #if !haskey(file, "columns")
-    #    file["columns"] = column_names
-    #end
-
-    #for year in all_years
-    #    table = get_table(MU) |> x-> subset(x, :year => ByRow(==(year)))
-    #    if !haskey(file, string(year))
-    #        file[string(year)] = table
-    #    end
-    #end
 
     return 
 
@@ -127,24 +110,6 @@ function load_table(
 
     haskey(f, "data") || error("The file `$file_path` does not have the key `data`.")
     data = f["data"]
-
-    #if length(years) == 0
-    #    years = parse.(Int,[k for k∈keys(f) if k∉["sets", "columns", "type"]])
-    #end
-
-    #df = DataFrame()
-    #for year∈years
-    #    @assert haskey(f, string(year)) "The file `$file_path` does not have the key `$(string(year))`."
-    #    data = f[string(year)]
-    #    @assert isa(data, DataFrame) "The data for year $year is not a DataFrame."
-    #    @assert all(isequal(names(data), columns)) "The data for year $year does not have the correct columns."
-
-    #    df = vcat(df, data)
-    #end
-
-
-
-    #close(f)
 
     return T(data, sets, elements)
 end
