@@ -5,40 +5,37 @@
         data::DataFrame
         sets::DataFrame
         elements::DataFrame
-        parameters::DataFrame
     end
 
 
-    WiNDCContainer.domain(data::National) = [:row, :col, :year]
-    WiNDCContainer.parameters(data::National) = data.parameters
+    WiNDCContainer.domain(data::National) = [:row, :col]
     WiNDCContainer.table(data::National) = data.data
     WiNDCContainer.sets(data::National) = data.sets
     WiNDCContainer.elements(data::National) = data.elements
 
-    param = DataFrame(row = [:a, :b], col = [:c, :d], year = [2020, 2021], parameter = [:p1, :p2], value = [1.0, 2.0])
-    S = DataFrame(name = [:commodity, :value_added, :sector], description = ["Commodity", "Value Added", "Sector"], domain = [:row, :row, :col])
-    E = DataFrame(name = ["com_1", "com_2", "va_1", "sec_1"], description = ["", "", "", ""], set = [:commodity, :commodity, :value_added, :sector])
-    P = DataFrame(name = [:p1, :p2, :p3, :p3], subtable = [:p1, :p2, :p1, :p2])
+    param = DataFrame(row = [:a, :b, :va], col = [:s1, :s2, :s1], parameter = [:p1, :p2, :p1], value = [1.0, 2.0, 3.0])
+    S = DataFrame(name = [:commodity, :value_added, :sector, :P1, :P2, :P3], description = ["Commodity", "Value Added", "Sector","","",""], domain = [:row, :row, :col, :parameter, :parameter, :parameter])
+
+    E = DataFrame(name = [:a, :b, :va, :s1, :s2, :p1, :p2, :p1, :p2], description = ["", "", "", "", "", "", "", "", ""], set = [:commodity, :commodity, :value_added, :sector, :sector, :P1, :P2, :P3, :P3])
     
-        
-    X = National(param, S, E, P; regularity_check = true)
+    X = National(param, S, E; regularity_check = true)
 
     @test table(X) == param
+    @test table(X, :P1) == param[param.parameter .== :p1, :]
+    @test table(X, :P3) == param
+    @test table(X, :commodity) == param[param.row .∈ Ref([:a, :b]), :]
+    @test table(X, :commodity, :sector) == param[param.row .∈ Ref([:a, :b]) .&& param.col .∈ Ref([:s1, :s2]), :]
+    @test table(X, :commodity => :a) == param[param.row .== :a, :]
+    @test table(X, :commodity => :a, :sector => :s2) == DataFrame(row=Symbol[], col=Symbol[], parameter=Symbol[], value=Float64[])
+
+
     @test sets(X) == S
-    @test elements(X) == E
-    @test parameters(X) == P
-
-    @test table(X, :p1) == param[param.parameter .== :p1, :]
-    @test table(X, :p3) == param
-    @test table(X, [:p1, :p2]) == param
-
     @test sets(X, :commodity) == S[S.name .== :commodity, :]
 
+
+    @test elements(X) == E
     @test elements(X, :commodity) == E[E.set .== :commodity, :]
-    
-    @test parameters(X, :p1) == P[P.name .== :p1, :]
-    @test parameters(X, :p3) == P[P.name .== :p3, :]
 
 
+    #@test elements(X, :p3)
 end
-        
