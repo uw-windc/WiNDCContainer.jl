@@ -14,5 +14,8 @@ module WiNDCContainer
 
     export calibrate, calibrate_fix_variables, calibrate_constraints
 
+    include("aggregate.jl")
+
+    export aggregate
 
 end # module WiNDCContainer

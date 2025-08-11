@@ -3,6 +3,7 @@ Base.copy(X::T) where T <: WiNDCtable = T(
     deepcopy(sets(X)),
     deepcopy(elements(X));
     regularity_check = false
+
 )
 
 
@@ -147,3 +148,6 @@ function load_table(
 
     return T(data, sets, elements)
 end
+
+
+
