@@ -123,6 +123,22 @@
          aggregate(X, aggregation)
     )
 
+    aggregation = DataFrame(
+        [
+            (set = :commodity, element = :com1,  new = :c),
+            (set = :commodity, element = :com2,  new = :c),
+            (set = :sector,    element = :sec1,  new = :s),
+            (set = :sector,    element = :sec2,  new = :s),
+            (set = :value_added, element = :va1, new = :v),
+            (set = :value_added, element = :va2, new = :v),
+        ]
+    )
+
+    @test_throws(
+        "`aggregation` must have columns `set`, `element`, and `n`",
+         aggregate(X, aggregation, new_element = :n)
+    )
+
 end
 
 
@@ -186,14 +202,18 @@ end
         (row = :va2, col = :sec2, parameter = :value_added, value = 1.0),
     ])
 
+
+
+
+
     aggregation = DataFrame(
         [
-            (set = :commodity, element = :com1,  new = :c),
-            (set = :commodity, element = :com2,  new = :c),
-            (set = :sector,    element = :sec1,  new = :s),
-            (set = :sector,    element = :sec2,  new = :s),
-            (set = :value_added, element = :va1, new = :v),
-            (set = :value_added, element = :va2, new = :v),
+            (s = :commodity,   n = :c, e = :com1, ),
+            (s = :commodity,   n = :c, e = :com2, ),
+            (s = :sector,      n = :s, e = :sec1, ),
+            (s = :sector,      n = :s, e = :sec2, ),
+            (s = :value_added, n = :v, e = :va1,  ),
+            (s = :value_added, n = :v, e = :va2,  ),
         ]
     )
 
@@ -205,7 +225,7 @@ end
         regularity_check = true
     )
 
-    Y = aggregate(X, aggregation)
+    Y = aggregate(X, aggregation, set = :s, old_element = :e, new_element = :n)
     
     expected = DataFrame([
         (row = :c, col = :s, parameter = :intermediate_demand, value = 4.0),
@@ -223,7 +243,6 @@ end
     ])
 
     @test elements(Y) == ELEMENTS
-
 
 
 end
