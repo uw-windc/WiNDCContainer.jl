@@ -1,6 +1,6 @@
 module WiNDCContainer
 
-    using DataFrames, JuMP, Ipopt
+    using DataFrames, JuMP, Ipopt, JLD2
 
     include("structs.jl")
 
@@ -8,7 +8,7 @@ module WiNDCContainer
 
     include("utility.jl")
 
-    export copy
+    export copy, save_table, load_table
 
     include("calibration.jl")
 
