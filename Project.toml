@@ -1,7 +1,7 @@
 name = "WiNDCContainer"
 uuid = "75ccf2c7-f350-4b24-b7dd-6f142b3d3146"
 authors = ["Mitch Phillipson <mitch.phillipson@gmail.com>"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
