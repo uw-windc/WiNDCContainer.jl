@@ -14,7 +14,7 @@ JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
 BenchmarkTools = "1.6.0"
 DataFrames = "1.7.0"
 Ipopt = "1.10.6"
-JLD2 = "0.5.15"
+JLD2 = "0.5.15, 0.6"
 JuMP = "1.27.0"
 julia = "1.10"
 
