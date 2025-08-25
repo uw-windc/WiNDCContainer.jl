@@ -92,18 +92,48 @@ function domain(data::WiNDCtable, set_name::Symbol)
 end
 domain(data::WiNDCtable, set_element::Pair{Symbol, T}) where T <: Any = domain(data, set_element[1]) 
 
+"""
+    base_table(data::WiNDCtable)
+
+Retrieve the base table of the WiNDCtable object. This _must_ be implemented for 
+any subtype of WiNDCtable.
+"""
+base_table(data::WiNDCtable) = throw(ArgumentError("`base_table` not implemented for WiNDCtable"))
+
+
+
+
+
+normalize_table(data::WiNDCtable, ::Missing) = base_table(data)
+normalize_table(data::WiNDCtable, parameter::Symbol) = normalize_table(data, [parameter])
+function normalize_table(data::WiNDCtable, parameters::Vector{Symbol})
+    leftjoin(
+        base_table(data),
+        elements(data, parameters...) |> x -> select(x, :name) |> x -> transform(x, :name => ByRow(y -> -1) => :sign),
+        on = :parameter => :name
+    ) |>
+    x -> coalesce.(x, 1) |>
+    x -> transform(x, 
+        [:value,:sign] => ByRow(*) => :value
+    ) |>
+    x -> select(x, Not(:sign)) 
+end
 
 
 
 """
-    table(data::WiNDCtable)
-    table(data::WiNDCtable, set_name::Symbol)
-    table(data::WiNDCtable, set_element::Pair{Symbol, T}) where T <: Any
-    table(data::WiNDCtable, set_element::Pair{Symbol, Vector{T}}) where T <: Any
+    table(data::WiNDCtable; normalize=missing)
+    table(data::WiNDCtable, set_name::Symbol; normalize=missing)
+    table(data::WiNDCtable, set_element::Pair{Symbol, T}; normalize=missing) where T <: Any
+    table(data::WiNDCtable, set_element::Pair{Symbol, Vector{T}}; normalize=missing) where T <: Any
     table(data, set_names...)
 
 Return the main table of a WiNDCtable object. Optionally filter by set name or set
 element pair.
+
+## Keyword Arguments
+
+- `normalize` - Reverse flow of selected parameters. Default is `missing`, or no parameters.
 
 ## Examples
 
@@ -112,47 +142,47 @@ julia> table(data) # Returns the entire table of the WiNDCtable object
 julia> table(data, :commodity) # Returns the table filtered by the 'commodity' set
 julia> table(data, :commodity => ["111CA", "222CA"]) # Returns the table filtered by the 'commodity' set with elements "111CA" and "222CA"
 julia> table(data, :commodity => Symbol("111CA"), :sector) # Returns the table filtered by the 'commodity' set with element "111CA" and the 'sector' set
+julia> table(data, :Export, :Import; normalize=:Use) # Flips sign of `Export` as it is a `Use`.
 ```
 
 !!! note
-    `table(data::WiNDCtable)` must be implemented for any subtype of WiNDCtable.
+    `base_table(data::WiNDCtable)` must be implemented for any subtype of WiNDCtable.
     The expected output is the entire `data` DataFrame.
 """
-table(data::WiNDCtable) = throw(ArgumentError("table not implemented for WiNDCtable"))
-function table(data::WiNDCtable, domain::Symbol, elements::Vector{T}) where T <: Any
-    return subset(table(data), domain => ByRow(∈(elements)))
+table(data::WiNDCtable; normalize = missing, kwargs...) = normalize_table(data, normalize)
+function table(data::WiNDCtable, domain::Symbol, elements::Vector{T}; kwargs...) where T <: Any
+    return subset(table(data; kwargs...), domain => ByRow(∈(elements)))
 end
 
-
-function table(data::WiNDCtable, set_name::Symbol)
+function table(data::WiNDCtable, set_name::Symbol; kwargs...)
     E = elements(data, set_name)[!, :name]
     d = domain(data, set_name)
-    return table(data, d, E)
+    return table(data, d, E; kwargs...)
 end
 
 
-function table(data::WiNDCtable, set_element::Pair{Symbol, T}) where T <: Any
-    table(data, set_element[1] => [set_element[2]])
+function table(data::WiNDCtable, set_element::Pair{Symbol, T}; kwargs...) where T <: Any
+    table(data, set_element[1] => [set_element[2]]; kwargs...)
 end
 
-function table(data::WiNDCtable, set_element::Pair{Symbol, Vector{T}}) where T <: Any
+function table(data::WiNDCtable, set_element::Pair{Symbol, Vector{T}}; kwargs...) where T <: Any
     d = domain(data, set_element[1])
     e = set_element[2]
 
     E = elements(data, set_element[1])[!, :name]
     all(x -> x in E, e) || error("Elements $e not found in set $(set_element[1])")
 
-    table(data, d, e)
+    table(data, d, e; kwargs...)
 end
 
-function table(data, set_names...)
+function table(data, set_names...; kwargs...)
     out = Dict()
     for set_name in set_names
         d = domain(data, set_name)
         if !haskey(out, d)
             out[d] = DataFrame()
         end
-        X = table(data, set_name)
+        X = table(data, set_name; kwargs...)
         out[d] = vcat(out[d], X)
     end
     if length(out) == 1

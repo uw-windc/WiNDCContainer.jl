@@ -9,7 +9,7 @@
 
 
     WiNDCContainer.domain(data::National) = [:row, :col]
-    WiNDCContainer.table(data::National) = data.data
+    WiNDCContainer.base_table(data::National) = data.data
     WiNDCContainer.sets(data::National) = data.sets
     WiNDCContainer.elements(data::National) = data.elements
 
@@ -27,6 +27,14 @@
     @test table(X, :commodity, :sector) == param[param.row .∈ Ref([:a, :b]) .&& param.col .∈ Ref([:s1, :s2]), :]
     @test table(X, :commodity => :a) == param[param.row .== :a, :]
     @test table(X, :commodity => :a, :sector => :s2) == DataFrame(row=Symbol[], col=Symbol[], parameter=Symbol[], value=Float64[])
+
+
+    # Order on a leftjoin is not preserved. This sorts so that we get a predictable order to test
+    @test table(X; normalize=:P2) |> x->sort(x,:row) == DataFrame(row = [:a, :b, :va], col = [:s1, :s2, :s1], parameter = [:p1, :p2, :p1], value = [1.0, -2.0, 3.0])
+    @test table(X; normalize=:P3) |> x->sort(x,:row) == DataFrame(row = [:a, :b, :va], col = [:s1, :s2, :s1], parameter = [:p1, :p2, :p1], value = [-1.0, -2.0, -3.0])
+    @test table(X; normalize=[:P1,:P2]) |> x->sort(x,:row) == DataFrame(row = [:a, :b, :va], col = [:s1, :s2, :s1], parameter = [:p1, :p2, :p1], value = [-1.0, -2.0, -3.0])
+
+
 
 
     @test sets(X) == S
