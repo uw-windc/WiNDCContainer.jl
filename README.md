@@ -28,7 +28,6 @@ struct National <: WiNDCtable
     data::DataFrame
     sets::DataFrame
     elements::DataFrame
-    parameters::DataFrame
 end
 ```
 
@@ -38,8 +37,7 @@ Next you must overwrite five methods:
 
 ```julia
 domain(data::National) = [:row, :col, :year]
-parameters(data::National) = data.parameters
-table(data::National) = data.data
+base_table(data::National) = data.data
 sets(data::National) = data.sets
 elements(data::National) = data.elements
 ```
@@ -51,102 +49,113 @@ With this let's discuss the structure of the DataFrames.
 1. `data` should have `N+2` columns. The first `N` are defined by `domain`, the last two are `parameter` and `value`. 
 2. `sets` should have `3` columns: `name`, `description`, and `domain`. The `domain` column should be a vector of symbols that match the `domain` method.
 3. `elements` also has `3` columns: `name`, `description`, and `set`. All values in the `set` column must appear in the `name` column of `sets`.
-4. `parameters` should have `2` columns: `name` and `subtable`. The `name` column is the name of the parameter. The `subtable` column links the parameter name to the `parameter` column in `data`. To be clear, the `subtable` column should contain the same values as the `parameter` column in `data`.
 
 These are a lot of conditions that are easy to get wrong. To help with this, we provide a constructor with the keyword `regularity_check` that checks these conditions when creating a new table.
 
 For example:
 
 ```julia
-param = DataFrame(
-    row = [:a, :b], 
-    col = [:c, :d], 
-    year = [2020, 2021], 
-    parameter = [:p1, :p3], 
-    value = [1.0, 2.0]
-    )
-S = DataFrame(
-    name = [:commodity, :value_added, :sector], 
-    description = ["Commodity", "Value Added", "Sector"], 
-    domain = [:row, :row, :col]
-)
-E = DataFrame(
-    name = ["com_1", "va_1", "sec_1"], 
-    description = ["", "", ""], 
-    set = [:commodity, :value_added, :sector]
-)
-P = DataFrame(
-    name = [:p1, :p2], 
-    subtable = [:p1, :p2]
-)
+DATA = DataFrame([
+    (row = :a, col = :c, year = 2020, parameter = :p1, value = 1.0),
+    (row = :b, col = :d, year = 2021, parameter = :p3, value = 2.0)
+])
+
+S = DataFrame([
+    (name = :commodity,   description = "Commodity",    domain = :row),
+    (name = :value_added, description = "Value Added",  domain = :row),
+    (name = :sector,      description = "Sector",       domain = :col),
+    (name = :year,        description = "Year",         domain = :year),
+    (name = :P1,          description = "Parameter",    domain = :parameter),
+    (name = :P2,          description = "Parameter",    domain = :parameter)
+])
+
+E = DataFrame([
+    (name = :a,   description = "", set = :commodity),
+    (name = :b,   description = "", set = :value_added),
+    (name = :c,   description = "", set = :sector),
+    (name = :d,   description = "", set = :sector),
+    (name = 2020, description = "", set = :year),
+    (name = 2021, description = "", set = :year),
+    (name = :p1,  description = "", set = :P1),
+    (name = :p2,  description = "", set = :P2)
+])
 
 
 N_bad = National(
-    param,  # data
-    S,      # sets
+    DATA,  # data
+    S,      # sets`
     E,      # elements
-    P       # parameters
 )
 
 N = National(
-    param, 
+    DATA, 
     S, 
     E, 
-    P; 
     regularity_check = true
 )
 ```
-The first `National` constructor will not throw an error since no checks are performed. However, the second one will throw an error as we checking for regularity as in `param` we have a parameter `p3` that does not exist in `P`.
+The first `National` constructor will not throw an error since no checks are performed. However, the second one will throw an error as we checking for regularity as in `DATA` we have a parameter `p3` that does not exist in as an element.
 
 
-Let's define a small example of how to use this `National` table type:
+Let's define a small working example:
 
 ```julia
-param = DataFrame(
-    row = [:a, :b], 
-    col = [:c, :d], 
-    year = [2020, 2021], 
-    parameter = [:p1, :p2], 
-    value = [1.0, 2.0]
-    )
-S = DataFrame(
-    name = [:commodity, :value_added, :sector], 
-    description = ["Commodity", "Value Added", "Sector"], 
-    domain = [:row, :row, :col]
-)
-E = DataFrame(
-    name = ["com_1", "va_1", "sec_1"], 
-    description = ["", "", ""], 
-    set = [:commodity, :value_added, :sector]
-)
-P = DataFrame(
-    name = [:p1, :p2, :p3, :p3], 
-    subtable = [:p1, :p2, :p1, :p2]
-)
+DATA = DataFrame([
+    (row = :a, col = :c, year = 2020, parameter = :p1, value = 1.0),
+    (row = :b, col = :d, year = 2021, parameter = :p2, value = 2.0)
+])
+
+S = DataFrame([
+    (name = :commodity,   description = "Commodity",    domain = :row),
+    (name = :value_added, description = "Value Added",  domain = :row),
+    (name = :sector,      description = "Sector",       domain = :col),
+    (name = :year,        description = "Year",         domain = :year),
+    (name = :P1,          description = "Parameter",    domain = :parameter),
+    (name = :P2,          description = "Parameter",    domain = :parameter),
+    (name = :P3,          description = "Parameter",    domain = :parameter)
+])
+
+E = DataFrame([
+    (name = :a,   description = "", set = :commodity),
+    (name = :b,   description = "", set = :value_added),
+    (name = :c,   description = "", set = :sector),
+    (name = :d,   description = "", set = :sector),
+    (name = 2020, description = "", set = :year),
+    (name = 2021, description = "", set = :year),
+    (name = :p1,  description = "", set = :P1),
+    (name = :p2,  description = "", set = :P2),
+    (name = :p1,  description = "", set = :P3),
+    (name = :p2,  description = "", set = :P3),
+])
 
 N = National(
-    param, 
+    DATA, 
     S, 
     E, 
-    P; 
     regularity_check = true
 )
 ```
 
-Notice that `P` has a parameter `p3` that is linked to the `subtable`s `p1` and `p2`. This will let us extract both `p1` and `p2` from the `data` DataFrame. The following two commands produce the same result:
+Notice we added the set `P3` with elements `p1` and `p2`. This will let us extract both `p1` and `p2` from the `data` DataFrame. The following two commands produce the same result:
 
 ```julia
-table(N, :p3)
+table(N, :P3)
 
-table(N, [:p1, :p2])
+table(N, [:P1, :P2])
 ```
 
-Defining `p3` in the `parameters` DataFrame provides a short hand for extracting different parameters.
+Defining `P3` in the `parameters` DataFrame provides a short hand for extracting different parameters.
 
-Similarly, if we want to view all the commodities:
+If we want to view all the commodities:
 
 ```julia
 elements(N, :commodity)
 ```
 
 This example only has one commodity element, but it will return a DataFrame with all the elements in the commodity set.
+
+You can also extract specific elements from the table, for example to get all the data elements where the sector is `c`:
+
+```julia
+table(N, :sector => :c)
+```
